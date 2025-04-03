@@ -17,21 +17,29 @@ type PatchFileController struct {
 	patchService service.PatchFileService
 }
 
-func NewPatchFileController(patchService service.PatchFileService) PatchFileController {
-	return PatchFileController{patchService: patchService}
+type Response struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
-func (controller *PatchFileController) HealthCheck() string {
-	return "OK"
+type ErrorResponse struct {
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
+	Code    string      `json:"code"`
+}
+
+func NewPatchFileController(patchService service.PatchFileService) PatchFileController {
+	return PatchFileController{patchService: patchService}
 }
 
 func (controller *PatchFileController) SaveCrawlingQuery(ctx *gin.Context) {
 	var request utils.FileUploadRequest
 	err := request.ParsePatchData(ctx, 1<<20)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": err.Error(),
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Unable to parse form",
+			Details: err,
+			Code:    utils.REQUEST_PARSE_ERROR,
 		})
 		return
 	}
@@ -44,18 +52,20 @@ func (controller *PatchFileController) SaveCrawlingQuery(ctx *gin.Context) {
 	}
 	saveErr := controller.patchService.SavePatchFile(patchFile)
 	if saveErr != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": saveErr.Error(),
-		})
+		errResponse := ErrorResponse{
+			Message: "Failed to save file",
+			Details: saveErr,
+			Code:    utils.DB_SAVE_ERROR,
+		}
+		ctx.JSON(http.StatusBadRequest, &errResponse)
 		return
 	}
 
-	// 성공 응답
-	ctx.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "File saved successfully",
-	})
+	response := Response{
+		Status:  "success",
+		Message: "File saved successfully",
+	}
+	ctx.JSON(http.StatusOK, &response)
 }
 
 func (controller *PatchFileController) DownloadFile(ctx *gin.Context) {
@@ -161,14 +171,13 @@ func (controller *PatchFileController) TestAllPatchList(ctx *gin.Context) {
 
 		// SQL 쿼리 생성
 		decodeString, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(fileBytes))
+		_, execErr := tx.Exec(string(decodeString))
 
-		// titles[i] -> 특정 파일명을 가진 쿼리라면 단순 문법 오류만 아니라 추가 검증이 되도록 한다??
-		_, err = tx.Exec(string(decodeString))
-		if err != nil {
+		if execErr != nil {
 			_ = tx.Rollback()
 			ctx.JSON(400, gin.H{
 				"status":  "error",
-				"message": err.Error(),
+				"message": execErr.Error(),
 				"details": titles[i],
 				"code":    400,
 			})
@@ -178,8 +187,9 @@ func (controller *PatchFileController) TestAllPatchList(ctx *gin.Context) {
 
 	_ = tx.Rollback()
 	// 성공 응답
-	ctx.JSON(200, gin.H{
-		"status":  "success",
-		"message": "Files test successfully",
-	})
+	response := Response{
+		Status:  "success",
+		Message: "Files test successfully",
+	}
+	ctx.JSON(http.StatusOK, &response)
 }
