@@ -4,6 +4,7 @@ import (
 	"auto-patch-system/patchFiles/entity"
 	"auto-patch-system/patchFiles/service"
 	"auto-patch-system/utils"
+	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -158,25 +159,20 @@ func (controller *PatchFileController) TestAllPatchList(ctx *gin.Context) {
 			continue
 		}
 
-		// SQL 쿼리 나누기
-		entireQueries := string(fileBytes)
-		validQueries, _ := utils.SplitSQLQueries(entireQueries)
+		// SQL 쿼리 생성
+		decodeString, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(fileBytes))
 
 		// titles[i] -> 특정 파일명을 가진 쿼리라면 단순 문법 오류만 아니라 추가 검증이 되도록 한다??
-
-		// 쿼리 실행
-		for _, query := range validQueries {
-			_, err = tx.Exec(query)
-			if err != nil {
-				_ = tx.Rollback()
-				ctx.JSON(400, gin.H{
-					"status":  "error",
-					"message": err.Error(),
-					"details": titles[i],
-					"code":    400,
-				})
-				return
-			}
+		_, err = tx.Exec(string(decodeString))
+		if err != nil {
+			_ = tx.Rollback()
+			ctx.JSON(400, gin.H{
+				"status":  "error",
+				"message": err.Error(),
+				"details": titles[i],
+				"code":    400,
+			})
+			return
 		}
 	}
 

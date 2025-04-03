@@ -30,7 +30,7 @@ func ConnectToSQLite(configuration *Config) (*gorm.DB, error) {
 
 // ConnectToMySQL - MySQL 데이터베이스 연결
 func ConnectToMySQL(dbConfig *Config) (*sql.DB, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", dbConfig.Database.User, dbConfig.Database.Password, dbConfig.Database.Host, dbConfig.Database.DBName)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?multiStatements=true", dbConfig.Database.User, dbConfig.Database.Password, dbConfig.Database.Host, dbConfig.Database.DBName)
 	db, err := sql.Open("mysql", dsn)
 
 	if err != nil {

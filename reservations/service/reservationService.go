@@ -4,6 +4,7 @@ import (
 	"auto-patch-system/reservations/entity"
 	"auto-patch-system/reservations/repository"
 	"auto-patch-system/utils"
+	"encoding/base64"
 	"io"
 	"log"
 	"mime/multipart"
@@ -149,18 +150,13 @@ func (s ReservationService) patchAllReservationToMySQL(todayDate string, reserva
 
 		for _, patch := range reservations {
 			// 파일이름이 ANI_LIST를 포함하는 경우에는 특정 validation 체크 로직을 진행한다.
-			entireQueries := string(patch.PatchData)
-			validQueries, _ := utils.SplitSQLQueries(entireQueries)
-			for _, query := range validQueries {
-				_, err = tx.Exec(query)
-				if err != nil {
-					tx.Rollback()
-					//_, err = mysql.Exec("UPDATE reservations SET success = 2 WHERE reservationDate = ?", todayDate)
-					if err != nil {
-						return nil
-					}
-					errInfo = append(errInfo, ErrorInfo{Env: config, Error: err})
-				}
+			// SQL 쿼리 생성
+			decodeString, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(patch.PatchData))
+
+			// titles[i] -> 특정 파일명을 가진 쿼리라면 단순 문법 오류만 아니라 추가 검증이 되도록 한다??
+			_, err = tx.Exec(string(decodeString))
+			if err != nil {
+				return err
 			}
 		}
 
