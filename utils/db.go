@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"os"
-	"strings"
 )
 
 var sqliteDB *gorm.DB
@@ -124,58 +123,6 @@ func NewSQLiteConfig() (*Config, error) {
 	}
 
 	return config, nil
-}
-
-// 쿼리를 세미콜론을 기준으로 나누는 함수
-func SplitSQLQueries(sql string) ([]string, error) {
-	var queries []string
-	var currentQuery strings.Builder
-	inString := false
-	inSingleLineComment := false
-	inMultiLineComment := false
-
-	for i, r := range sql {
-		// 문자열 리터럴 시작/끝
-		if r == '\'' && !inMultiLineComment && !inSingleLineComment {
-			inString = !inString
-		}
-
-		// 싱글 라인 주석
-		if r == '-' && i+1 < len(sql) && sql[i+1] == ' ' && !inString && !inMultiLineComment {
-			inSingleLineComment = true
-		}
-
-		// 멀티 라인 주석 시작
-		if r == '/' && i+1 < len(sql) && sql[i+1] == '*' && !inString && !inSingleLineComment {
-			inMultiLineComment = true
-		}
-
-		// 멀티 라인 주석 끝
-		if r == '*' && i+1 < len(sql) && sql[i+1] == '/' && inMultiLineComment {
-			inMultiLineComment = false
-			i++ // Skip the '/' character
-		}
-
-		// 싱글 라인 주석 끝
-		if r == '\n' && inSingleLineComment {
-			inSingleLineComment = false
-		}
-
-		// 세미콜론이 쿼리의 끝일 때
-		if r == ';' && !inString && !inSingleLineComment && !inMultiLineComment {
-			queries = append(queries, currentQuery.String())
-			currentQuery.Reset() // 쿼리 버퍼 초기화
-		} else {
-			currentQuery.WriteRune(r) // 쿼리 내용 추가
-		}
-	}
-
-	// 마지막 쿼리 추가 (세미콜론 없는 경우)
-	if currentQuery.Len() > 0 {
-		queries = append(queries, currentQuery.String())
-	}
-
-	return queries, nil
 }
 
 // 슬랙 메시지를 전송하는 함수
