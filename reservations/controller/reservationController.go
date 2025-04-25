@@ -1,26 +1,28 @@
 package controller
 
 import (
-	"auto-patch-system/reservations/service"
+	"auto-patch-system/notification"
+	reservation "auto-patch-system/reservations/service"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
 )
 
 type ReservationController struct {
-	reservationService service.ReservationService
+	reservationService  reservation.ReservationService
+	notificationService notification.Service
 }
 
-func NewReservationController(reservationService service.ReservationService) ReservationController {
-	return ReservationController{reservationService: reservationService}
+func NewReservationController(notificationService notification.Service, reservationService reservation.ReservationService) ReservationController {
+	return ReservationController{notificationService: notificationService, reservationService: reservationService}
 }
 
-func (c ReservationController) ReserveNotification(context *gin.Context) {
+func (controller *ReservationController) ReserveNotification(context *gin.Context) {
 	queryParams := context.Request.URL.Query()
 	patchDate := queryParams.Get("date")
 	reservedTime := "10:00:00"
 
-	createErr := c.reservationService.SaveOnlyNotification(patchDate, reservedTime)
+	createErr := controller.reservationService.SaveOnlyNotification(patchDate, reservedTime)
 	if createErr != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save data to database"})
 		return
@@ -29,8 +31,8 @@ func (c ReservationController) ReserveNotification(context *gin.Context) {
 	context.JSON(http.StatusOK, "File saved successfully")
 }
 
-func (c ReservationController) GetAllReservations(context *gin.Context) {
-	err, reservationList := c.reservationService.GetReservations()
+func (controller *ReservationController) GetAllReservations(context *gin.Context) {
+	err, reservationList := controller.reservationService.GetReservations()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save data to database"})
 		return
@@ -39,7 +41,7 @@ func (c ReservationController) GetAllReservations(context *gin.Context) {
 	context.JSON(http.StatusOK, reservationList)
 }
 
-func (c ReservationController) ReservePatchList(context *gin.Context) {
+func (controller *ReservationController) ReservePatchList(context *gin.Context) {
 	// 날짜 가져오기
 	queryParams := context.Request.URL.Query()
 	patchDate := queryParams.Get("date")
@@ -54,7 +56,7 @@ func (c ReservationController) ReservePatchList(context *gin.Context) {
 	files := context.Request.MultipartForm.File["blobs"] // 단일 Key로 읽기
 	titles := context.Request.MultipartForm.Value["titles"]
 
-	saveErr := c.reservationService.SaveReservation(patchDate, files, titles)
+	saveErr := controller.reservationService.SaveReservation(patchDate, files, titles)
 	if saveErr != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Failed to save data to database"})
 		return
@@ -67,10 +69,10 @@ func (c ReservationController) ReservePatchList(context *gin.Context) {
 	})
 }
 
-func (c ReservationController) ExecReservedPatchFile(context *gin.Context) {
+func (controller *ReservationController) ExecReservedPatchFile(context *gin.Context) {
 	todayDate := time.Now().Format("2006-01-02")
 
-	getErr := c.reservationService.GetReservationByDate(todayDate)
+	getErr := controller.reservationService.GetReservationByDate(todayDate)
 	if getErr != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get data from database"})
 		return

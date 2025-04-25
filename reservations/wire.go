@@ -4,16 +4,18 @@
 package reservations
 
 import (
+	"auto-patch-system/notification"
 	"auto-patch-system/reservations/controller"
 	"auto-patch-system/reservations/repository"
-	"auto-patch-system/reservations/service"
+	reservations "auto-patch-system/reservations/service"
 	"github.com/google/wire"
 )
 
 func InitReservationController() controller.ReservationController {
 	wire.Build(
 		repository.NewReservationRepository,
-		service.NewReservationService,
+		reservations.NewReservationService,
+		notification.NewSlackNotificationService,
 		controller.NewReservationController,
 	)
 	return controller.ReservationController{}
