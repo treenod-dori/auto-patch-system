@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"net/http"
 	"os"
+	"strings"
 )
 
 var sqliteDB *gorm.DB
@@ -30,6 +32,17 @@ func ConnectToSQLite(configuration *Config) (*gorm.DB, error) {
 // ConnectToMySQL - MySQL 데이터베이스 연결
 func ConnectToMySQL(dbConfig *Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?multiStatements=true", dbConfig.Database.User, dbConfig.Database.Password, dbConfig.Database.Host, dbConfig.Database.DBName)
+	db, err := sql.Open("mysql", dsn)
+
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// ConnectToMySQL - MySQL 데이터베이스 연결
+func ConnectToMySQL2(dbConfig *Config) (*sql.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", dbConfig.Database.User, dbConfig.Database.Password, dbConfig.Database.Host, dbConfig.Database.DBName)
 	db, err := sql.Open("mysql", dsn)
 
 	if err != nil {
@@ -66,6 +79,20 @@ func InitMySQL(mysqlConfig *Config) error {
 	return nil
 }
 
+func InitMySQL2(mysqlConfig *Config) error {
+	var err error
+
+	// SQLite 연결
+	if mysqlDB == nil {
+		mysqlDB, err = ConnectToMySQL2(mysqlConfig)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SQLite: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func GetSqliteDB() *gorm.DB {
 	return sqliteDB
 }
@@ -76,6 +103,57 @@ func GetMySqlDB() *sql.DB {
 
 type Config struct {
 	Database *Database `yaml:"database"` // 환경별로 데이터베이스 설정을 관리
+}
+
+func SplitSQLQueries(sql string) ([]string, error) {
+	var queries []string
+	var currentQuery strings.Builder
+	inString := false
+	inSingleLineComment := false
+	inMultiLineComment := false
+
+	for i, r := range sql {
+		// 문자열 리터럴 시작/끝
+		if r == '\'' && !inMultiLineComment && !inSingleLineComment {
+			inString = !inString
+		}
+
+		// 싱글 라인 주석
+		if r == '-' && i+1 < len(sql) && sql[i+1] == ' ' && !inString && !inMultiLineComment {
+			inSingleLineComment = true
+		}
+
+		// 멀티 라인 주석 시작
+		if r == '/' && i+1 < len(sql) && sql[i+1] == '*' && !inString && !inSingleLineComment {
+			inMultiLineComment = true
+		}
+
+		// 멀티 라인 주석 끝
+		if r == '*' && i+1 < len(sql) && sql[i+1] == '/' && inMultiLineComment {
+			inMultiLineComment = false
+			i++ // Skip the '/' character
+		}
+
+		// 싱글 라인 주석 끝
+		if r == '\n' && inSingleLineComment {
+			inSingleLineComment = false
+		}
+
+		// 세미콜론이 쿼리의 끝일 때
+		if r == ';' && !inString && !inSingleLineComment && !inMultiLineComment {
+			queries = append(queries, currentQuery.String())
+			currentQuery.Reset() // 쿼리 버퍼 초기화
+		} else {
+			currentQuery.WriteRune(r) // 쿼리 내용 추가
+		}
+	}
+
+	// 마지막 쿼리 추가 (세미콜론 없는 경우)
+	if currentQuery.Len() > 0 {
+		queries = append(queries, currentQuery.String())
+	}
+
+	return queries, nil
 }
 
 type Database struct {

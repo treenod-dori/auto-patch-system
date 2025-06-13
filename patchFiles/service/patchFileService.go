@@ -87,3 +87,20 @@ func (s PatchFileService) MakeMergedPatchFile(patchFiles []entity.PatchFile, pat
 
 	return finalFilePath, nil
 }
+
+func (s PatchFileService) DeletePatchFile(title string, date string) error {
+	patchFile, selectErr := s.patchFileRepository.GetPatchFile(title, date)
+	if selectErr != nil {
+		log.Println("Error selecting patch file:", selectErr)
+		return selectErr
+	}
+
+	// 파일 삭제
+	err := s.patchFileRepository.DeletePatchFile(patchFile)
+	if err != nil {
+		return fmt.Errorf("failed to delete patch file: %w", err)
+	}
+
+	return nil
+
+}

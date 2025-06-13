@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type PatchFileController struct {
@@ -20,6 +21,10 @@ type PatchFileController struct {
 type Response struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
+}
+
+type DownloadRequest struct {
+	Files []entity.PatchFile `json:"files"`
 }
 
 type ErrorResponse struct {
@@ -70,18 +75,18 @@ func (controller *PatchFileController) SaveCrawlingQuery(ctx *gin.Context) {
 
 func (controller *PatchFileController) DownloadFile(ctx *gin.Context) {
 	var queryParams utils.QueryParameterRequest
+	var fileRequest DownloadRequest
+
 	params, _ := queryParams.ParseQueryParams(ctx, []string{"date"})
-	// 쿼리 파라미터에서 날짜 가져오기
 	patchDate := params["date"]
 
-	patchList, getErr := controller.patchService.FindPatchFilesByDate(patchDate)
-	if getErr != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": getErr.Error(),
+	if err := ctx.BindJSON(&fileRequest); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
 		})
 		return
 	}
+	patchList := fileRequest.Files
 
 	finalFile, makeErr := controller.patchService.MakeMergedPatchFile(patchList, patchDate)
 	if makeErr != nil {
@@ -171,7 +176,12 @@ func (controller *PatchFileController) TestAllPatchList(ctx *gin.Context) {
 
 		// SQL 쿼리 생성
 		decodeString, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(fileBytes))
+
+		// multiStatements를 사용하여 SQL 쿼리 실행
+		start := time.Now()
 		_, execErr := tx.Exec(string(decodeString))
+		elapsed := time.Since(start)
+		log.Printf("쿼리 실행 시간: %s", elapsed)
 
 		if execErr != nil {
 			_ = tx.Rollback()
@@ -192,4 +202,47 @@ func (controller *PatchFileController) TestAllPatchList(ctx *gin.Context) {
 		Message: "Files test successfully",
 	}
 	ctx.JSON(http.StatusOK, &response)
+}
+
+func (controller *PatchFileController) GetAllPatchFiles(ctx *gin.Context) {
+	var queryParams utils.QueryParameterRequest
+	params, _ := queryParams.ParseQueryParams(ctx, []string{"date"})
+	// 쿼리 파라미터에서 날짜, 제목 가져오기
+	patchDate := params["date"]
+
+	patchList, getErr := controller.patchService.FindPatchFilesByDate(patchDate)
+	if getErr != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": getErr.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, patchList)
+}
+
+func (controller *PatchFileController) DeletePatchFile(ctx *gin.Context) {
+	title := ctx.PostForm("title")
+	patchDate := ctx.PostForm("reservationDate")
+
+	if title == "" || patchDate == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Missing form fields"})
+		return
+	}
+
+	// 패치 파일 삭제
+	deleteErr := controller.patchService.DeletePatchFile(title, patchDate)
+	if deleteErr != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": deleteErr.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Patch file deleted successfully",
+	})
 }

@@ -3,12 +3,15 @@ package repository
 import (
 	"auto-patch-system/patchFiles/entity"
 	"auto-patch-system/utils"
+	"log"
 )
 
 type PatchFileRepository interface {
 	SavePatchFile(patchData entity.PatchFile) error
 	IsExistPatchData(fileName, reservationDate string) bool
 	GetPatchFileListByDate(patchDate string) []entity.PatchFile
+	DeletePatchFile(deleteData entity.PatchFile) error
+	GetPatchFile(fileName string, patchDate string) (entity.PatchFile, error)
 }
 
 // 실제 구현체
@@ -45,4 +48,25 @@ func (p patchFileRepository) GetPatchFileListByDate(patchDate string) []entity.P
 		return nil
 	}
 	return list
+}
+
+func (p patchFileRepository) DeletePatchFile(data entity.PatchFile) error {
+	err := utils.GetSqliteDB().Table("patchFiles").Delete(&data).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p patchFileRepository) GetPatchFile(fileName string, patchDate string) (entity.PatchFile, error) {
+	var result entity.PatchFile
+	err := utils.GetSqliteDB().Table("patchFiles").
+		Where("title = ? AND reservationDate = ?", fileName, patchDate).
+		First(&result).Error
+
+	if err != nil {
+		log.Print("Error retrieving patch file:", err)
+		return result, err
+	}
+	return result, nil
 }

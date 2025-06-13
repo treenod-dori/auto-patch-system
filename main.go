@@ -52,10 +52,16 @@ func main() {
 		patchFilesGroup.POST("/upload", patchFileController.SaveCrawlingQuery)
 
 		// 다운로드 버튼을 눌렀을 때 호출하는 API. 요청 온 날짜에 해당하는 파일들을 가져와서 하나의 파일로 병합한다.
-		patchFilesGroup.GET("/download", patchFileController.DownloadFile)
+		patchFilesGroup.POST("/download", patchFileController.DownloadFile)
 
 		// 패치 파일을 테스트 실행할 때 호출하는 API
 		patchFilesGroup.POST("/test", patchFileController.TestAllPatchList)
+
+		// 예약된 패치 파일 목록을 가져올 때 호출하는 API
+		patchFilesGroup.GET("", patchFileController.GetAllPatchFiles)
+
+		// 예약된 패치 파일을 삭제할 때 호출하는 API
+		patchFilesGroup.POST("/delete", patchFileController.DeletePatchFile)
 	}
 
 	reservationsGroup := r.Group("/reservations")
