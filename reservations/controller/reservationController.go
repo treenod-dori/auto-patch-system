@@ -80,3 +80,28 @@ func (controller *ReservationController) ExecReservedPatchFile(context *gin.Cont
 
 	return
 }
+
+func (controller *ReservationController) DeleteReservation(context *gin.Context) {
+	fileName := context.PostForm("fileName")
+	reservationDate := context.PostForm("reservationDate")
+
+	if fileName == "" || reservationDate == "" {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Missing form fields"})
+		return
+	}
+
+	// 패치 파일 삭제
+	deleteErr := controller.reservationService.DeleteReservation(fileName, reservationDate)
+	if deleteErr != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": deleteErr.Error(),
+		})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Reservation deleted successfully",
+	})
+}

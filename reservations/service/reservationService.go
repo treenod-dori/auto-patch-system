@@ -5,6 +5,7 @@ import (
 	"auto-patch-system/reservations/repository"
 	"auto-patch-system/utils"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -40,13 +41,12 @@ func (s ReservationService) SaveOnlyNotification(patchDate string, reservedTime 
 }
 
 func (s ReservationService) GetReservations() (error, []entity.Reservation) {
-	var reservationList []entity.Reservation
-	selectErr := s.reservationRepository.GetReservations(&reservationList)
+	list, selectErr := s.reservationRepository.GetReservations()
 	if selectErr != nil {
 		return selectErr, nil
 	}
 
-	return nil, reservationList
+	return nil, list
 }
 
 func (s ReservationService) SaveReservation(patchDate string, files []*multipart.FileHeader, titles []string) error {
@@ -175,6 +175,22 @@ func (s ReservationService) patchAllReservationToMySQL(todayDate string, reserva
 		}
 
 		// slack에 errInfo를 포함한 메시지 전송
+	}
+
+	return nil
+}
+
+func (s ReservationService) DeleteReservation(fileName string, reservationDate string) error {
+	reservedFile, selectErr := s.reservationRepository.GetReservationByDateAndFileName(reservationDate, fileName)
+	if selectErr != nil {
+		log.Println("Error selecting patch file:", selectErr)
+		return selectErr
+	}
+
+	// 파일 삭제
+	err := s.reservationRepository.DeleteReservation(reservedFile)
+	if err != nil {
+		return fmt.Errorf("failed to delete patch file: %w", err)
 	}
 
 	return nil

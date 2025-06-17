@@ -7,9 +7,11 @@ import (
 
 type ReservationRepository interface {
 	SaveReservation(reservation entity.Reservation) error
-	GetReservations(list *[]entity.Reservation) error
+	GetReservations() ([]entity.Reservation, error)
 	GetReservationByDate(todayDate string) (error, []entity.Reservation)
 	UpdateReservationStatus(todayDate string, status int) error
+	GetReservationByDateAndFileName(date string, fileName string) (entity.Reservation, error)
+	DeleteReservation(file entity.Reservation) error
 }
 
 // 실제 구현체
@@ -29,14 +31,12 @@ func (r reservationRepository) SaveReservation(reservation entity.Reservation) e
 	return nil
 }
 
-func (r reservationRepository) GetReservations(list *[]entity.Reservation) error {
+func (r reservationRepository) GetReservations() ([]entity.Reservation, error) {
 	db := utils.GetSqliteDB()
+	var reservationList []entity.Reservation
 
-	selectErr := db.Table("reservations").Select("fileName", "reservationDate", "reservationTime", "success").Find(&list).Error
-	if selectErr != nil {
-		return selectErr
-	}
-	return nil
+	selectErr := db.Table("reservations").Select("fileName", "reservationDate", "reservationTime", "success").Find(&reservationList).Error
+	return reservationList, selectErr
 }
 
 func (r reservationRepository) GetReservationByDate(todayDate string) (error, []entity.Reservation) {
@@ -50,6 +50,14 @@ func (r reservationRepository) GetReservationByDate(todayDate string) (error, []
 	return nil, result
 }
 
+func (r reservationRepository) GetReservationByDateAndFileName(date string, fileName string) (entity.Reservation, error) {
+	db := utils.GetSqliteDB()
+
+	var result entity.Reservation
+	selectErr := db.Table("reservations").Where("reservationDate = ? AND fileName = ?", date, fileName).Find(&result).Error
+	return result, selectErr
+}
+
 func (r reservationRepository) UpdateReservationStatus(todayDate string, status int) error {
 	db := utils.GetSqliteDB()
 
@@ -58,4 +66,9 @@ func (r reservationRepository) UpdateReservationStatus(todayDate string, status 
 		return updateErr
 	}
 	return nil
+}
+
+func (r reservationRepository) DeleteReservation(data entity.Reservation) error {
+	err := utils.GetSqliteDB().Table("reservations").Delete(&data).Error
+	return err
 }

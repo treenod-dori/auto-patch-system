@@ -77,6 +77,9 @@ func main() {
 
 		// Reserve 버튼을 눌렀을 때 호출하는 API
 		reservationsGroup.POST("", reservationController.ReservePatchList)
+
+		// 예약건을 삭제할 때 호출하는 API
+		reservationsGroup.POST("/delete", reservationController.DeleteReservation)
 	}
 
 	r.Run("localhost:8080")
