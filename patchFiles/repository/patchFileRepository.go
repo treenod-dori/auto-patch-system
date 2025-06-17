@@ -3,6 +3,7 @@ package repository
 import (
 	"auto-patch-system/patchFiles/entity"
 	"auto-patch-system/utils"
+	"gorm.io/gorm"
 	"log"
 )
 
@@ -15,14 +16,18 @@ type PatchFileRepository interface {
 }
 
 // 실제 구현체
-type patchFileRepository struct{}
+type patchFileRepository struct {
+	db *gorm.DB
+}
 
 func NewPatchFileRepository() PatchFileRepository {
-	return patchFileRepository{}
+	return patchFileRepository{
+		db: utils.GetMySqlGormDB(),
+	}
 }
 
 func (p patchFileRepository) SavePatchFile(queryData entity.PatchFile) error {
-	err := utils.GetSqliteDB().Table("patchFiles").Create(&queryData).Error
+	err := p.db.Table("patchFiles").Create(&queryData).Error
 	if err != nil {
 		return err
 	}
@@ -30,7 +35,7 @@ func (p patchFileRepository) SavePatchFile(queryData entity.PatchFile) error {
 }
 
 func (p patchFileRepository) IsExistPatchData(fileName, reservationDate string) bool {
-	result := utils.GetSqliteDB().Table("patchFiles").
+	result := p.db.Table("patchFiles").
 		Select("patchData").
 		Where("title = ? AND reservationDate = ?", fileName, reservationDate).
 		Find(&entity.PatchFile{})
@@ -40,7 +45,7 @@ func (p patchFileRepository) IsExistPatchData(fileName, reservationDate string) 
 
 func (p patchFileRepository) GetPatchFileListByDate(patchDate string) []entity.PatchFile {
 	var list []entity.PatchFile
-	err := utils.GetSqliteDB().Table("patchFiles").
+	err := p.db.Table("patchFiles").
 		Where("reservationDate = ?", patchDate).
 		Find(&list).Error
 
@@ -51,7 +56,7 @@ func (p patchFileRepository) GetPatchFileListByDate(patchDate string) []entity.P
 }
 
 func (p patchFileRepository) DeletePatchFile(data entity.PatchFile) error {
-	err := utils.GetSqliteDB().Table("patchFiles").Delete(&data).Error
+	err := p.db.Table("patchFiles").Delete(&data).Error
 	if err != nil {
 		return err
 	}
@@ -60,7 +65,7 @@ func (p patchFileRepository) DeletePatchFile(data entity.PatchFile) error {
 
 func (p patchFileRepository) GetPatchFile(fileName string, patchDate string) (entity.PatchFile, error) {
 	var result entity.PatchFile
-	err := utils.GetSqliteDB().Table("patchFiles").
+	err := p.db.Table("patchFiles").
 		Where("title = ? AND reservationDate = ?", fileName, patchDate).
 		First(&result).Error
 

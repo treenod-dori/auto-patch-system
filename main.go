@@ -3,13 +3,10 @@ package main
 import (
 	"auto-patch-system/patchFiles"
 	"auto-patch-system/reservations"
-	"auto-patch-system/utils"
-	"errors"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 	"time"
 )
 
@@ -20,18 +17,6 @@ type ErrorResponse struct {
 }
 
 func main() {
-	sqliteDBConfig, err := utils.NewSQLiteConfig()
-	if err != nil {
-		log.Println(errors.New(err.Error()))
-		return
-	}
-
-	err = utils.InitSQLite(sqliteDBConfig)
-	if err != nil {
-		log.Printf(err.Error())
-		return
-	}
-
 	r := gin.Default()
 	// CORS 설정 커스터마이즈
 	r.Use(cors.New(cors.Config{

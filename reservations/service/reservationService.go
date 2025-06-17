@@ -26,7 +26,7 @@ type ErrorInfo struct {
 
 func (s ReservationService) SaveOnlyNotification(patchDate string, reservedTime string) error {
 	reservation := entity.Reservation{
-		ReservationTime: reservedTime,
+		UploadDate:      reservedTime,
 		ReservationDate: patchDate,
 		FileName:        "어드민 설정만 전달합니다.",
 		PatchData:       []byte("NOT EXISTS QUERY"),
@@ -68,7 +68,7 @@ func (s ReservationService) SaveReservation(patchDate string, files []*multipart
 			FileName:        titles[i],
 			PatchData:       fileBytes,
 			ReservationDate: patchDate,
-			ReservationTime: reservedTime,
+			UploadDate:      reservedTime,
 			Success:         0,
 		}
 
@@ -82,7 +82,7 @@ func (s ReservationService) SaveReservation(patchDate string, files []*multipart
 }
 
 func (s ReservationService) GetReservationByDate(date string) error {
-	selectErr, reservations := s.reservationRepository.GetReservationByDate(date)
+	reservations, selectErr := s.reservationRepository.GetReservationByDate(date)
 	if selectErr != nil {
 		return selectErr
 	}
