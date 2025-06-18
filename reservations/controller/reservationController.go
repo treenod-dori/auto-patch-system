@@ -20,9 +20,8 @@ func NewReservationController(notificationService notification.Service, reservat
 func (controller *ReservationController) ReserveNotification(context *gin.Context) {
 	queryParams := context.Request.URL.Query()
 	patchDate := queryParams.Get("date")
-	reservedTime := "10:00:00"
 
-	createErr := controller.reservationService.SaveOnlyNotification(patchDate, reservedTime)
+	createErr := controller.reservationService.SaveOnlyNotification(patchDate)
 	if createErr != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save data to database"})
 		return
@@ -56,7 +55,13 @@ func (controller *ReservationController) ReservePatchList(context *gin.Context) 
 	files := context.Request.MultipartForm.File["blobs"] // 단일 Key로 읽기
 	titles := context.Request.MultipartForm.Value["titles"]
 
-	saveErr := controller.reservationService.SaveReservation(patchDate, files, titles)
+	uploadDate := time.Now().Format("2006-01-02")
+	if patchDate < uploadDate {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Cannot reserve a date in the past"})
+		return
+	}
+
+	saveErr := controller.reservationService.SaveReservation(uploadDate, patchDate, files, titles)
 	if saveErr != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Failed to save data to database"})
 		return

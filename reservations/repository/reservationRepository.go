@@ -34,7 +34,11 @@ func (r reservationRepository) SaveReservation(reservation entity.Reservation) e
 func (r reservationRepository) GetReservations() ([]entity.Reservation, error) {
 	var reservationList []entity.Reservation
 
-	selectErr := r.db.Table("reservations").Select("fileName", "reservationDate", "uploadDate", "success").Find(&reservationList).Error
+	selectErr := r.db.Table("reservations").
+		Select("fileName", "reservationDate", "uploadDate", "success").
+		Order("uploadDate DESC").
+		Find(&reservationList).
+		Error
 	return reservationList, selectErr
 }
 

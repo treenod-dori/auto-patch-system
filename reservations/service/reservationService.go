@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"time"
 )
 
 type ReservationService struct {
@@ -24,9 +25,11 @@ type ErrorInfo struct {
 	Error error
 }
 
-func (s ReservationService) SaveOnlyNotification(patchDate string, reservedTime string) error {
+func (s ReservationService) SaveOnlyNotification(patchDate string) error {
+	uploadDate := time.Now().Format("2006-01-02")
+
 	reservation := entity.Reservation{
-		UploadDate:      reservedTime,
+		UploadDate:      uploadDate,
 		ReservationDate: patchDate,
 		FileName:        "어드민 설정만 전달합니다.",
 		PatchData:       []byte("NOT EXISTS QUERY"),
@@ -49,7 +52,7 @@ func (s ReservationService) GetReservations() (error, []entity.Reservation) {
 	return nil, list
 }
 
-func (s ReservationService) SaveReservation(patchDate string, files []*multipart.FileHeader, titles []string) error {
+func (s ReservationService) SaveReservation(uploadDate string, patchDate string, files []*multipart.FileHeader, titles []string) error {
 	for i, fileHeader := range files {
 		file, err := fileHeader.Open()
 		if err != nil {
@@ -62,13 +65,12 @@ func (s ReservationService) SaveReservation(patchDate string, files []*multipart
 		if err != nil {
 			return err
 		}
-		reservedTime := "10:00:00"
 
 		reservation := entity.Reservation{
 			FileName:        titles[i],
 			PatchData:       fileBytes,
 			ReservationDate: patchDate,
-			UploadDate:      reservedTime,
+			UploadDate:      uploadDate,
 			Success:         0,
 		}
 
