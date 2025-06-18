@@ -74,16 +74,9 @@ func (controller *ReservationController) ReservePatchList(context *gin.Context) 
 	})
 }
 
-func (controller *ReservationController) ExecReservedPatchFile(context *gin.Context) {
+func (controller *ReservationController) RunReservedPatchJob() error {
 	todayDate := time.Now().Format("2006-01-02")
-
-	getErr := controller.reservationService.GetReservationByDate(todayDate)
-	if getErr != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get data from database"})
-		return
-	}
-
-	return
+	return controller.reservationService.GetReservationByDate(todayDate)
 }
 
 func (controller *ReservationController) DeleteReservation(context *gin.Context) {

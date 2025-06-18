@@ -3,10 +3,13 @@ package main
 import (
 	"auto-patch-system/patchFiles"
 	"auto-patch-system/reservations"
+	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/robfig/cron/v3"
+	"log"
 	"time"
 )
 
@@ -31,6 +34,16 @@ func main() {
 	patchFileController := patchFiles.InitPatchFilesController()
 	reservationController := reservations.InitReservationController()
 
+	c := cron.New()
+	c.AddFunc("0 8 * * 1-5", func() {
+		fmt.Println("예약 패치 실행 중...")
+		err := reservationController.RunReservedPatchJob()
+		if err != nil {
+			log.Printf("예약 패치 실패: %v", err)
+		}
+	})
+	c.Start()
+
 	patchFilesGroup := r.Group("/patchFiles")
 	{
 		// 크롤링 결과에서 Send 버튼을 눌렀을 때 호출하는 API
@@ -51,9 +64,6 @@ func main() {
 
 	reservationsGroup := r.Group("/reservations")
 	{
-		//예약시간에 해당하는 파일이 있다면 실행하는 API. cron에서 호출하도록 구성해보기
-		reservationsGroup.GET("/exec", reservationController.ExecReservedPatchFile)
-
 		// 알림만 전송이 필요한 경우 호출하는 API
 		reservationsGroup.GET("/only-notification", reservationController.ReserveNotification)
 

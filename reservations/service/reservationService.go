@@ -92,28 +92,31 @@ func (s ReservationService) GetReservationByDate(date string) error {
 	if len(reservations) == 0 {
 		log.Println("No patches found for today.")
 		// 패치할게 없는 경우에 대한 처리
-		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#only서버파트", "사전QA 패치 알림봇", "오늘 날짜에 패치할 내용이 없습니다.")
+		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#only서버파트", "사전QA 패치 알림봇", "오늘 날짜에 패치할 내용이 없습니다.")
 		if err != nil {
 			log.Printf("슬랙 알림 실패 : %v", err)
 			return err
 		}
+		return nil
 	}
 
 	// 패치할 내용은 없지만, 알림은 쏴야 할 경우
 	if len(reservations) == 1 && string(reservations[0].FileName) == "어드민 설정만 전달합니다." {
 		// webhook api url
 		// https://hooks.slack.com/services/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
-		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#test", "사전QA 패치 알림봇", "어드민 설정만 전달 필요합니다. <https://treenod.atlassian.net/wiki/spaces/pokopokopang/pages/72213266433/2025+QA|여기를 클릭>하여 확인해주세요.")
+		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#test", "사전QA 패치 알림봇", "어드민 설정만 전달 필요합니다. <https://treenod.atlassian.net/wiki/spaces/pokopokopang/pages/72213266433/2025+QA|여기를 클릭>하여 확인해주세요.")
 		if err != nil {
+			s.reservationRepository.UpdateReservationStatus(date, 2)
 			log.Printf("슬랙 알림 실패 : %v", err)
 			return err
 		}
 
-		err = s.reservationRepository.UpdateReservationStatus(date, 2)
+		err = s.reservationRepository.UpdateReservationStatus(date, 1)
 		if err != nil {
 			log.Printf("Error updating reservations: %v", err)
 			return err
 		}
+		return nil
 	}
 
 	patchErr := s.patchAllReservationToMySQL(date, reservations)
@@ -121,21 +124,12 @@ func (s ReservationService) GetReservationByDate(date string) error {
 		return patchErr
 	}
 
-	updateErr := s.reservationRepository.UpdateReservationStatus(date, 1)
-	if updateErr != nil {
-		log.Printf("Error updating reservations: %v", updateErr)
-		return updateErr
-	}
-
-	// slack에 성공 메시지 전송
-
 	return nil
 }
 
 // TODO error 핸들링 처리를 해주기
 func (s ReservationService) patchAllReservationToMySQL(todayDate string, reservations []entity.Reservation) error {
 	configList := []string{"sandbox", "pre_qa", "build_qa", "build_qa2"}
-	var errInfo []ErrorInfo
 	for _, config := range configList {
 		mySQLConfig, _ := utils.NewMySQLConfig(config)
 		connectErr := utils.InitMySQL(mySQLConfig)
@@ -151,7 +145,6 @@ func (s ReservationService) patchAllReservationToMySQL(todayDate string, reserva
 		}
 
 		for _, patch := range reservations {
-			// 파일이름이 ANI_LIST를 포함하는 경우에는 특정 validation 체크 로직을 진행한다.
 			// SQL 쿼리 생성
 			decodeString, _ := base64.StdEncoding.DecodeString(base64.StdEncoding.EncodeToString(patch.PatchData))
 
@@ -165,20 +158,15 @@ func (s ReservationService) patchAllReservationToMySQL(todayDate string, reserva
 		// 실행 성공한 경우 커밋하고 다음으로 넘어간다.
 		if err := tx.Commit(); err != nil {
 			log.Printf("Failed to commit transaction for , %v", err)
+			s.reservationRepository.UpdateReservationStatus(todayDate, 2)
+			return err
 		} else {
 			continue
 		}
 	}
 
-	if len(errInfo) > 0 {
-		err := s.reservationRepository.UpdateReservationStatus(todayDate, 2)
-		if err != nil {
-			return err
-		}
-
-		// slack에 errInfo를 포함한 메시지 전송
-	}
-
+	s.reservationRepository.UpdateReservationStatus(todayDate, 1)
+	utils.SendSlackMessage("https://hooks.slack.com/services/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", "#test", "사전QA 패치 알림봇", "오늘 항목의 사전QA 패치가 성공적으로 완료되었습니다. <https://treenod.atlassian.net/wiki/spaces/pokopokopang/pages/72213266433/2025+QA|여기를 클릭>하여 확인해주세요.")
 	return nil
 }
 
