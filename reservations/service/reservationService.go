@@ -92,7 +92,7 @@ func (s ReservationService) GetReservationByDate(date string) error {
 	if len(reservations) == 0 {
 		log.Println("No patches found for today.")
 		// 패치할게 없는 경우에 대한 처리
-		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#only서버파트", "사전QA 패치 알림봇", "오늘 날짜에 패치할 내용이 없습니다.")
+		err := utils.SendSlackMessage("https://hooks.slack.com/services/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 ", "#only서버파트", "사전QA 패치 알림봇", "오늘 날짜에 패치할 내용이 없습니다.")
 		if err != nil {
 			log.Printf("슬랙 알림 실패 : %v", err)
 			return err
@@ -103,8 +103,7 @@ func (s ReservationService) GetReservationByDate(date string) error {
 	// 패치할 내용은 없지만, 알림은 쏴야 할 경우
 	if len(reservations) == 1 && string(reservations[0].FileName) == "어드민 설정만 전달합니다." {
 		// webhook api url
-		// https://hooks.slack.com/services/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
-		err := utils.SendSlackMessage("https://hooks.slack.com/services/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", "#test", "사전QA 패치 알림봇", "어드민 설정만 전달 필요합니다. <https://treenod.atlassian.net/wiki/spaces/pokopokopang/pages/72213266433/2025+QA|여기를 클릭>하여 확인해주세요.")
+		err := utils.SendSlackMessage("https://hooks.slack.com/services/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 ", "#test", "사전QA 패치 알림봇", "어드민 설정만 전달 필요합니다. <https://treenod.atlassian.net/wiki/spaces/pokopokopang/pages/72213266433/2025+QA|여기를 클릭>하여 확인해주세요.")
 		if err != nil {
 			s.reservationRepository.UpdateReservationStatus(date, 2)
 			log.Printf("슬랙 알림 실패 : %v", err)

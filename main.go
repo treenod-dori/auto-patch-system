@@ -3,7 +3,6 @@ package main
 import (
 	"auto-patch-system/patchFiles"
 	"auto-patch-system/reservations"
-	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -35,14 +34,12 @@ func main() {
 	reservationController := reservations.InitReservationController()
 
 	c := cron.New()
-	c.AddFunc("0 8 * * 1-5", func() {
-		fmt.Println("예약 패치 실행 중...")
+	c.AddFunc("0 */10 4 * * 1-5", func() {
 		err := reservationController.RunReservedPatchJob()
 		if err != nil {
 			log.Printf("예약 패치 실패: %v", err)
 		}
 	})
-	c.Start()
 
 	patchFilesGroup := r.Group("/patchFiles")
 	{
